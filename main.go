@@ -30,12 +30,11 @@ const (
 )
 
 // Encrypt/Decrypt AES-256-CBC
-func EncryptFile(rawFile *os.File, passphrase []byte, out_filePath string) error {
+func EncryptFile(rawFile *os.File, passphrase []byte, pbkdf2_iter int, out_filePath string) error {
 
 	// gen salt and pbkdf2
 	salt := make([]byte, 8)
 	rand.Read(salt)
-	pbkdf2_iter, _ := strconv.Atoi(pbkdf2_iter_count)
 	key, _ := pbkdf2.Key(sha256.New, string(passphrase), salt, pbkdf2_iter, AES_256_IN_BYTE+BLOCK_IN_BYTE)
 
 	outputFile, _ := os.OpenFile(out_filePath, os.O_CREATE|os.O_RDWR, 0755)
@@ -80,14 +79,13 @@ func EncryptFile(rawFile *os.File, passphrase []byte, out_filePath string) error
 	return nil
 }
 
-func DecryptFile(encryptfile *os.File, passphrase []byte, out_filePath string) error {
+func DecryptFile(encryptfile *os.File, passphrase []byte, pbkdf2_iter int, out_filePath string) error {
 
 	// get salt from file
 	salt := make([]byte, 8)
 	encryptfile.Read(salt)
 
 	// gen key by pbkdf2
-	pbkdf2_iter, _ := strconv.Atoi(pbkdf2_iter_count)
 	key, _ := pbkdf2.Key(sha256.New, string(passphrase), salt, pbkdf2_iter, AES_256_IN_BYTE+BLOCK_IN_BYTE)
 
 	// construct decrypter
@@ -168,7 +166,9 @@ func DecryptCommand(cmd *cobra.Command, args []string) {
 	var passphrase, _ = term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
 
-	result := DecryptFile(file, passphrase, output)
+	pbkdf2_iter, _ := strconv.Atoi(pbkdf2_iter_count)
+
+	result := DecryptFile(file, passphrase, pbkdf2_iter, output)
 	if result != nil {
 		fmt.Println("Decrypt fail: " + result.Error())
 	}
@@ -186,7 +186,9 @@ func EncryptCommand(cmd *cobra.Command, args []string) {
 	var passphrase, _ = term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
 
-	result := EncryptFile(file, passphrase, output)
+	pbkdf2_iter, _ := strconv.Atoi(pbkdf2_iter_count)
+
+	result := EncryptFile(file, passphrase, pbkdf2_iter, output)
 	if result != nil {
 		fmt.Println("Encrypt fail: ", result.Error())
 	}
