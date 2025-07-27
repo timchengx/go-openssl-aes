@@ -137,7 +137,7 @@ func DecryptFile(encryptfile *os.File, passphrase []byte, pbkdf2_iter int, out_f
 func CheckOpenFile(filePath string) (*os.File, error) {
 	_, err := os.Stat(filePath)
 	if err != nil {
-		return nil, errors.New("File not exist.")
+		return nil, errors.New("file not exist")
 	}
 	file, _ := os.Open(filePath)
 
