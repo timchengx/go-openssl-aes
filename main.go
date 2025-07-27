@@ -218,7 +218,7 @@ func main() {
 	rootCmd.AddCommand(encryptCommand)
 	rootCmd.AddCommand(decryptCommand)
 	rootCmd.PersistentFlags().StringVarP(&output, "output", "o", "./output", "output file path")
-	rootCmd.PersistentFlags().StringVarP(&pbkdf2_iter_count, "iter", "i", "200000", "PBKDF2 key derivation iteration")
+	rootCmd.PersistentFlags().StringVarP(&pbkdf2_iter_count, "iter", "i", "200000", "PBKDF2 key derivation iteration - OpenSSL default 10000")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println("Error: " + err.Error())
