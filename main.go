@@ -25,8 +25,7 @@ var (
 
 const (
 	OPENSSL_MAGIC_STR = "Salted__"
-	AES_256_IN_BYTE   = 32 // 256
-	BLOCK_IN_BYTE     = 16 // 128
+	AES_256_IN_BYTE   = 32
 )
 
 // Encrypt/Decrypt AES-256-CBC
@@ -35,7 +34,7 @@ func EncryptFile(rawFile *os.File, passphrase []byte, pbkdf2_iter int, out_fileP
 	// gen salt and pbkdf2
 	salt := make([]byte, 8)
 	rand.Read(salt)
-	key, _ := pbkdf2.Key(sha256.New, string(passphrase), salt, pbkdf2_iter, AES_256_IN_BYTE+BLOCK_IN_BYTE)
+	key, _ := pbkdf2.Key(sha256.New, string(passphrase), salt, pbkdf2_iter, AES_256_IN_BYTE+aes.BlockSize)
 
 	outputFile, _ := os.OpenFile(out_filePath, os.O_CREATE|os.O_RDWR, 0755)
 	defer outputFile.Close()
@@ -47,8 +46,8 @@ func EncryptFile(rawFile *os.File, passphrase []byte, pbkdf2_iter int, out_fileP
 	aesBlock, _ := aes.NewCipher(key[:AES_256_IN_BYTE])
 	encrypter := cipher.NewCBCEncrypter(aesBlock, key[AES_256_IN_BYTE:])
 
-	readBuffer := make([]byte, BLOCK_IN_BYTE)
-	writeBuffer := make([]byte, BLOCK_IN_BYTE)
+	readBuffer := make([]byte, aes.BlockSize)
+	writeBuffer := make([]byte, aes.BlockSize)
 	var currentSize int
 	var err error
 	for {
@@ -57,7 +56,7 @@ func EncryptFile(rawFile *os.File, passphrase []byte, pbkdf2_iter int, out_fileP
 			// no more data to read
 			return err
 		} else {
-			if currentSize != BLOCK_IN_BYTE {
+			if currentSize != aes.BlockSize {
 				// last block occur, need handle PKCS#7 padding before encrypt
 				break
 			}
@@ -68,9 +67,9 @@ func EncryptFile(rawFile *os.File, passphrase []byte, pbkdf2_iter int, out_fileP
 
 	// write pkcs padding
 	if currentSize == 0 {
-		readBuffer = bytes.Repeat([]byte{BLOCK_IN_BYTE}, BLOCK_IN_BYTE)
-	} else { // currentSize != 0
-		padding_len := BLOCK_IN_BYTE - currentSize
+		readBuffer = bytes.Repeat([]byte{aes.BlockSize}, aes.BlockSize)
+	} else {
+		padding_len := aes.BlockSize - currentSize
 		copy(readBuffer[currentSize:], bytes.Repeat([]byte{byte(padding_len)}, padding_len))
 	}
 	encrypter.CryptBlocks(writeBuffer, readBuffer)
@@ -86,7 +85,7 @@ func DecryptFile(encryptfile *os.File, passphrase []byte, pbkdf2_iter int, out_f
 	encryptfile.Read(salt)
 
 	// gen key by pbkdf2
-	key, _ := pbkdf2.Key(sha256.New, string(passphrase), salt, pbkdf2_iter, AES_256_IN_BYTE+BLOCK_IN_BYTE)
+	key, _ := pbkdf2.Key(sha256.New, string(passphrase), salt, pbkdf2_iter, AES_256_IN_BYTE+aes.BlockSize)
 
 	// construct decrypter
 	aesBlock, _ := aes.NewCipher(key[:AES_256_IN_BYTE])
@@ -95,8 +94,8 @@ func DecryptFile(encryptfile *os.File, passphrase []byte, pbkdf2_iter int, out_f
 	outputFile, _ := os.OpenFile(out_filePath, os.O_CREATE|os.O_RDWR, 0755)
 	defer outputFile.Close()
 
-	readBuffer := make([]byte, BLOCK_IN_BYTE)
-	writeBuffer := make([]byte, BLOCK_IN_BYTE)
+	readBuffer := make([]byte, aes.BlockSize)
+	writeBuffer := make([]byte, aes.BlockSize)
 	for {
 		_, err := encryptfile.Read(readBuffer)
 		if err == io.EOF {
@@ -114,20 +113,20 @@ func DecryptFile(encryptfile *os.File, passphrase []byte, pbkdf2_iter int, out_f
 	// note: In PKCS#7 padding spec
 	// a padding content or block will always added
 	// no matter last block size are whether or not a full block size (16 bytes)
-	padding_len := int(writeBuffer[BLOCK_IN_BYTE-1]) // expect buffer is a AES block size
+	padding_len := int(writeBuffer[aes.BlockSize-1]) // expect buffer is a AES block size
 
-	if padding_len > BLOCK_IN_BYTE || padding_len < 0 {
+	if padding_len > aes.BlockSize || padding_len < 0 {
 		return errors.New("incorrect padding size")
 	}
 
-	for i := BLOCK_IN_BYTE - padding_len; i < BLOCK_IN_BYTE; i++ {
+	for i := aes.BlockSize - padding_len; i < aes.BlockSize; i++ {
 		if int(writeBuffer[i]) != padding_len {
 			return errors.New("padding content not match")
 		}
 	}
 
-	remainDataSize := BLOCK_IN_BYTE - padding_len
-	filePtr, _ := outputFile.Seek(-BLOCK_IN_BYTE, io.SeekEnd)
+	remainDataSize := aes.BlockSize - padding_len
+	filePtr, _ := outputFile.Seek(-aes.BlockSize, io.SeekEnd)
 	outputFile.Write(writeBuffer[:remainDataSize])
 	outputFile.Truncate(filePtr + int64(remainDataSize))
 
