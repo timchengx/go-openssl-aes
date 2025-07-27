@@ -80,6 +80,7 @@ func EncryptFile(rawFile *os.File, passphrase []byte, pbkdf2_iter int, out_fileP
 
 func DecryptFile(encryptfile *os.File, passphrase []byte, pbkdf2_iter int, out_filePath string) error {
 
+	encryptfile.Seek(8, io.SeekStart)
 	// get salt from file
 	salt := make([]byte, 8)
 	encryptfile.Read(salt)
@@ -159,6 +160,7 @@ func DecryptCommand(cmd *cobra.Command, args []string) {
 		fmt.Println("File is not encrypted by OpenSSL")
 		return
 	}
+	file.Seek(0, io.SeekStart)
 
 	// prompt passphrase
 	fmt.Print("Passphrase: ")
