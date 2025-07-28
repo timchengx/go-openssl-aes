@@ -204,7 +204,7 @@ var decryptCommand = &cobra.Command{
 
 var encryptCommand = &cobra.Command{
 	Use:   "encrypt <dncrypt_filepath>",
-	Short: "Decrypt file encrypted by program or OpenSSL AES algorithm",
+	Short: "Encrypt file encrypted by program or OpenSSL AES algorithm",
 	Args:  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 	Run:   EncryptCommand,
 }
