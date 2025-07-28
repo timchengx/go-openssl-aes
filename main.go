@@ -34,6 +34,8 @@ func EncryptFile(rawFile *os.File, passphrase []byte, pbkdf2_iter int, out_fileP
 	// gen salt and pbkdf2
 	salt := make([]byte, 8)
 	rand.Read(salt)
+
+	// uses first 32 bytes for key, last 16 bytes for iv
 	key, _ := pbkdf2.Key(sha256.New, string(passphrase), salt, pbkdf2_iter, AES_256_IN_BYTE+aes.BlockSize)
 
 	outputFile, _ := os.OpenFile(out_filePath, os.O_CREATE|os.O_RDWR, 0755)
@@ -80,12 +82,13 @@ func EncryptFile(rawFile *os.File, passphrase []byte, pbkdf2_iter int, out_fileP
 
 func DecryptFile(encryptfile *os.File, passphrase []byte, pbkdf2_iter int, out_filePath string) error {
 
+	// OPENSSL_MAGIC_STR is not needed for decryption
 	encryptfile.Seek(8, io.SeekStart)
 	// get salt from file
 	salt := make([]byte, 8)
 	encryptfile.Read(salt)
 
-	// gen key by pbkdf2
+	// uses first 32 bytes for key, last 16 bytes for iv
 	key, _ := pbkdf2.Key(sha256.New, string(passphrase), salt, pbkdf2_iter, AES_256_IN_BYTE+aes.BlockSize)
 
 	// construct decrypter
